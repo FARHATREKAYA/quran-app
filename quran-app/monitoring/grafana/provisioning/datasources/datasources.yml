@@ -1,0 +1,43 @@
+# Grafana Data Source Configuration
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 5s
+      queryTimeout: 60s
+      httpHeaderName1: 'X-Scope-OrgID'
+    secureJsonData:
+      httpHeaderValue1: '1'
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      timeout: 60
+      maxLines: 1000
+      httpHeaderName1: 'X-Scope-OrgID'
+      derivedFields:
+        - name: 'TraceID'
+          matcherType: 'label'
+          matcherRegex: 'trace_id'
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View Trace'
+    secureJsonData:
+      httpHeaderValue1: '1'
+
+  - name: Prometheus-AlertManager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    editable: false
+    jsonData:
+      implementation: prometheus

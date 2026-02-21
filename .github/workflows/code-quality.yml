@@ -1,0 +1,114 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  python-lint:
+    name: Python Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+    
+    - name: Run flake8
+      run: |
+        cd quran-app/backend
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Check code formatting with black
+      run: |
+        cd quran-app/backend
+        black --check --diff . || true
+    
+    - name: Check imports with isort
+      run: |
+        cd quran-app/backend
+        isort --check-only --diff . || true
+    
+    - name: Type check with mypy
+      run: |
+        cd quran-app/backend
+        mypy . --ignore-missing-imports || true
+
+  javascript-lint:
+    name: JavaScript/TypeScript Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: quran-app/frontend/package.json
+    
+    - name: Install dependencies
+      run: |
+        cd quran-app/frontend
+        npm ci
+    
+    - name: Run ESLint
+      run: |
+        cd quran-app/frontend
+        npm run lint
+      continue-on-error: true
+    
+    - name: Check TypeScript compilation
+      run: |
+        cd quran-app/frontend
+        npx tsc --noEmit
+      continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Run npm audit
+      run: |
+        cd quran-app/frontend
+        npm audit --audit-level moderate
+      continue-on-error: true
+    
+    - name: Run pip-audit
+      run: |
+        cd quran-app/backend
+        pip install pip-audit
+        pip-audit --desc
+      continue-on-error: true

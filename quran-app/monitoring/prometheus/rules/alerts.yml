@@ -1,0 +1,173 @@
+# Prometheus Alerting Rules for Quran App
+
+groups:
+  - name: quran_api_alerts
+    interval: 15s
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: quran-backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for the last 5 minutes"
+
+      # High Latency Alert
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: quran-backend
+        annotations:
+          summary: "High latency detected"
+          description: "95th percentile latency is above 500ms for the last 5 minutes"
+
+      # Service Down Alert
+      - alert: ServiceDown
+        expr: up{job="quran-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: quran-backend
+        annotations:
+          summary: "Quran backend is down"
+          description: "The Quran backend service has been down for more than 1 minute"
+
+      # External API Failure Alert
+      - alert: ExternalAPIFailure
+        expr: |
+          (
+            sum(rate(external_api_requests_total{status="error"}[5m]))
+            /
+            sum(rate(external_api_requests_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: quran-backend
+        annotations:
+          summary: "External API failure rate is high"
+          description: "External API (Quran.com) error rate is above 10%"
+
+      # Database Query Slow Alert
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(db_query_duration_seconds_bucket[5m])) by (le)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: quran-backend
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile database query time is above 100ms"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            container_memory_usage_bytes{name="quran-backend"}
+            /
+            container_spec_memory_limit_bytes{name="quran-backend"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: quran-backend
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 85%"
+
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{name="quran-backend"}[5m])
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: quran-backend
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80%"
+
+      # Too Many In-Progress Requests Alert
+      - alert: TooManyInProgressRequests
+        expr: sum(http_requests_in_progress) > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: quran-backend
+        annotations:
+          summary: "Too many in-progress requests"
+          description: "There are more than 100 concurrent requests being processed"
+
+      # Prometheus Target Missing Alert
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus target missing"
+          description: "A Prometheus target has been down for more than 5 minutes"
+
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # Node Memory Alert
+      - alert: NodeMemoryUsage
+        expr: |
+          (
+            node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+          )
+          /
+          node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High node memory usage"
+          description: "Node memory usage is above 85%"
+
+      # Node CPU Alert
+      - alert: NodeCPUUsage
+        expr: |
+          100 - (
+            avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100
+          ) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High node CPU usage"
+          description: "Node CPU usage is above 85%"
+
+      # Disk Space Alert
+      - alert: NodeDiskSpace
+        expr: |
+          (
+            node_filesystem_avail_bytes
+            /
+            node_filesystem_size_bytes
+          ) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Less than 10% disk space remaining"

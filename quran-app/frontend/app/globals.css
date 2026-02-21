@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-amiri: 'Amiri', serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
+  --font-amiri: var(--font-amiri);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Theme classes */
+html.light {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+html.dark {
+  --background: #1a1a1a;
+  --foreground: #ededed;
+}
+
+html.sepia {
+  --background: #f4ecd8;
+  --foreground: #5b4636;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Arabic font styling */
+.font-amiri {
+  font-family: 'Amiri', 'Traditional Arabic', serif;
+  font-weight: 400;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark mode scrollbar */
+html.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Selection colors */
+::selection {
+  background-color: #10b981;
+  color: white;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* Button and link transitions */
+button, a {
+  transition: all 0.2s ease;
+}
+
+/* RTL support for Arabic text */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Tajweed text coloring (if supported) */
+.tajweed {
+  /* Placeholder for tajweed coloring classes */
+  /* These would be dynamically applied based on tajweed rules */
+}
