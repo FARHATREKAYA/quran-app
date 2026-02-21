@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, MapPin, Bell, BellOff } from 'lucide-react';
+import { Clock, MapPin, Bell, BellOff, AlertCircle } from 'lucide-react';
 import { prayerApi, PrayerTimes, PrayerTimeData } from '@/lib/prayerApi';
 import useQuranStore from '@/lib/store';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -11,6 +11,7 @@ export function PrayerTimesWidget() {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
   const [nextPrayer, setNextPrayer] = useState<PrayerTimeData | null>(null);
   const [timeUntil, setTimeUntil] = useState<string>('');
+  const [minutesUntil, setMinutesUntil] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -86,12 +87,14 @@ export function PrayerTimesWidget() {
       const timeLeft = prayerApi.formatTimeUntil(nextPrayer.timeDate);
       setTimeUntil(timeLeft);
 
-      // Check if it's 5 minutes before prayer
+      // Calculate minutes remaining
       const now = new Date();
       const diff = nextPrayer.timeDate.getTime() - now.getTime();
-      const minutesUntil = Math.floor(diff / (1000 * 60));
+      const minsUntil = Math.floor(diff / (1000 * 60));
+      setMinutesUntil(minsUntil);
 
-      if (minutesUntil === 5 && notificationsEnabled && !hasNotified) {
+      // Check if it's 5 minutes before prayer
+      if (minsUntil === 5 && notificationsEnabled && !hasNotified) {
         const prayerName = getPrayerName(nextPrayer);
         prayerApi.showNotification(
           t.prayerTimeNotification || 'Prayer Time Soon',
@@ -127,71 +130,95 @@ export function PrayerTimesWidget() {
 
   if (loading) {
     return (
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+      <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${
         theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
       }`}>
-        <Clock className="h-4 w-4 text-gray-400 animate-pulse" />
-        <span className="text-sm text-gray-500">{t.loading}...</span>
+        <Clock className="h-3.5 w-3.5 text-gray-400 animate-pulse" />
+        <span className="text-xs text-gray-500">{t.loading}...</span>
       </div>
     );
   }
 
   if (error || !nextPrayer) {
     return (
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+      <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${
         theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
       }`}>
-        <MapPin className="h-4 w-4 text-gray-400" />
+        <MapPin className="h-3.5 w-3.5 text-gray-400" />
         <span className="text-xs text-gray-500">{t.locationRequired || 'Location needed'}</span>
       </div>
     );
   }
 
+  const showMobileAlert = minutesUntil > 0 && minutesUntil <= 150;
+
   return (
-    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
-      theme === 'dark' 
-        ? 'bg-emerald-900/30 border border-emerald-800' 
-        : 'bg-emerald-50 border border-emerald-200'
-    }`}>
-      <div className="flex flex-col">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-emerald-600" />
-          <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+    <div className="relative">
+      <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${
+        theme === 'dark' 
+          ? 'bg-emerald-900/30 border border-emerald-800' 
+          : 'bg-emerald-50 border border-emerald-200'
+      }`}>
+        <Clock className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-medium text-emerald-800 dark:text-emerald-200 truncate">
             {getPrayerName(nextPrayer)}
           </span>
-          <span className="text-xs text-emerald-600 dark:text-emerald-400">
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex-shrink-0">
             {nextPrayer.time}
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-semibold ${
-            timeUntil.includes('m') && parseInt(timeUntil) <= 10
+          <span className="hidden md:inline text-xs text-gray-400">•</span>
+          <span className={`hidden md:inline text-xs font-semibold ${
+            minutesUntil <= 100
               ? 'text-amber-600 dark:text-amber-400'
               : 'text-emerald-600 dark:text-emerald-400'
           }`}>
-            {timeUntil}
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {t.remaining || 'remaining'}
+            {timeUntil} {t.remaining}
           </span>
         </div>
+        
+        <button
+          onClick={toggleNotifications}
+          className={`hidden sm:flex p-1 rounded-md transition-colors flex-shrink-0 ${
+            notificationsEnabled
+              ? 'bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300'
+              : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+          }`}
+          title={notificationsEnabled ? t.notificationsOn : t.notificationsOff}
+        >
+          {notificationsEnabled ? (
+            <Bell className="h-3.5 w-3.5" />
+          ) : (
+            <BellOff className="h-3.5 w-3.5" />
+          )}
+        </button>
       </div>
-      
-      <button
-        onClick={toggleNotifications}
-        className={`p-1.5 rounded-md transition-colors ${
-          notificationsEnabled
-            ? 'bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300'
-            : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-        }`}
-        title={notificationsEnabled ? t.notificationsOn : t.notificationsOff}
-      >
-        {notificationsEnabled ? (
-          <Bell className="h-4 w-4" />
-        ) : (
-          <BellOff className="h-4 w-4" />
-        )}
-      </button>
+
+      {/* Mobile Alert Notification - floating below widget */}
+      {showMobileAlert && (
+        <div className={`md:hidden absolute left-0 top-full mt-1 flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg animate-pulse z-50 ${
+          minutesUntil <= 50
+            ? theme === 'dark'
+              ? 'bg-amber-900/95 border border-amber-600'
+              : 'bg-amber-50 border border-amber-300'
+            : theme === 'dark'
+              ? 'bg-emerald-900/95 border border-emerald-600'
+              : 'bg-emerald-50 border border-emerald-300'
+        }`}>
+          <AlertCircle className={`h-3.5 w-3.5 flex-shrink-0 ${
+            minutesUntil <= 5
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-emerald-600 dark:text-emerald-400'
+          }`} />
+          <span className={`text-xs font-semibold whitespace-nowrap ${
+            minutesUntil <= 5
+              ? 'text-amber-700 dark:text-amber-300'
+              : 'text-emerald-700 dark:text-emerald-300'
+          }`}>
+            {timeUntil} {t.remaining}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
