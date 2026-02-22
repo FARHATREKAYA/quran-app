@@ -454,7 +454,7 @@ docker compose down
 
 3. **Mobile Optimization:** The app works but hasn't been thoroughly tested on mobile browsers. Touch gestures and responsive design need refinement.
 
-4. **Database:** SQLite is sufficient for current scale but PostgreSQL might be needed if scaling beyond 10,000 concurrent users.
+4. **Database:** SQLite is sufficient for current scale. Consider PostgreSQL only if scaling beyond 10,000 concurrent users.
 
 5. **Caching:** Currently no caching layer. Adding Redis would improve performance significantly.
 

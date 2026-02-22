@@ -11,8 +11,7 @@ API Gateway / Backend Server (FastAPI)
 ↓ (ORM / SQL queries)
 Database Layer
 ├── Static Quran Data (immutable) → SQLite (bundled + cached)
-├── User Data (dynamic) → Supabase PostgreSQL (or self-hosted Postgres)
-└── Media (Audio) → CDN / Static files (S3 + Cloudflare)
+└── Media (Audio) → CDN / Static files (everyayah.com API)
 ```
 
 ## Features
@@ -46,8 +45,7 @@ Database Layer
 ### Backend
 - **FastAPI** - Python web framework
 - **SQLAlchemy** - ORM for database operations
-- **SQLite** - Static Quran data storage
-- **Supabase** - PostgreSQL for user data (auth, bookmarks, comments, reports)
+- **SQLite** - Database for Quran data and user data
 - **Uvicorn** - ASGI server
 - **JWT** - Authentication tokens
 - **bcrypt** - Password hashing
@@ -101,13 +99,15 @@ quran-app/
 
 ## Database Schema
 
-### SQLite (Static Data)
+### SQLite Database
+
+#### Static Data Tables
 - `surahs` - Surah metadata (114 records)
 - `verses` - Verse content with Arabic and English text (6,236 records)
 - `reciters` - Audio reciter information
 - `audio_recitations` - Audio URLs and metadata
 
-### Supabase PostgreSQL (User Data)
+#### User Data Tables
 - `users` - User accounts with authentication
 - `user_preferences` - User settings (theme, font size, language)
 - `bookmarks` - Saved verses with notes
@@ -163,7 +163,6 @@ quran-app/
 - **Node.js** 18+ and npm/yarn
 - **Python** 3.9+
 - **Docker** and Docker Compose (optional)
-- **Supabase** account (for user data)
 
 ### Quick Start with Docker (Recommended)
 
@@ -200,7 +199,7 @@ pip install -r requirements.txt
 3. **Configure environment variables**
 ```bash
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edit .env with your configuration
 ```
 
 4. **Seed the Quran database**
@@ -208,10 +207,7 @@ cp .env.example .env
 python build_quran_db.py
 ```
 
-5. **Set up Supabase tables**
-Run the SQL in `supabase/migrations/` in your Supabase SQL editor
-
-6. **Start the backend**
+5. **Start the backend**
 ```bash
 uvicorn main:app --reload --port 8000
 ```
@@ -225,7 +221,7 @@ npm install
 8. **Configure frontend environment**
 ```bash
 cp .env.local.example .env.local
-# Edit .env.local with your API and Supabase URLs
+# Edit .env.local with your API URL
 ```
 
 9. **Start the frontend**

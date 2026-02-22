@@ -169,28 +169,11 @@ services:
     networks:
       - quran-network
 
-  # Optional: PostgreSQL for local development (if not using Supabase)
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: quran-postgres
-  #   environment:
-  #     - POSTGRES_DB=quran_db
-  #     - POSTGRES_USER=quran_user
-  #     - POSTGRES_PASSWORD=quran_password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   restart: unless-stopped
-  #   networks:
-  #     - quran-network
-
 volumes:
   prometheus_data:
   grafana_data:
   alertmanager_data:
   loki_data:
-  # postgres_data:
 
 networks:
   quran-network:

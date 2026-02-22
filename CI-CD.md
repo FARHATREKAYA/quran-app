@@ -253,7 +253,7 @@ docker-compose restart backend
 
 ### Database
 - SQLite is sufficient for current scale
-- Consider PostgreSQL if > 10,000 concurrent users
+- Consider PostgreSQL only if scaling beyond 10,000 concurrent users
 
 ## Cost Estimation (Monthly)
 
