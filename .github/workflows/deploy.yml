@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     tags:
-      - 'v*'
+    - 'v*'
   workflow_dispatch:
     inputs:
       environment:
@@ -13,142 +13,366 @@ on:
         default: 'staging'
         type: choice
         options:
-          - staging
-          - production
+        - staging
+        - production
 
 env:
   REGISTRY: ghcr.io
+  BACKEND_IMAGE: quran-app-backend
+  FRONTEND_IMAGE: quran-app-frontend
 
 jobs:
+  # ==================== STAGING DEPLOYMENT ====================
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop' || github.event.inputs.environment == 'staging'
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment:
       name: staging
       url: https://staging.quran-app.example.com
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Deploy to Staging Server
-      run: |
-        echo "Deploying to staging environment..."
-        # Add your staging deployment commands here
-        # Example:
-        # - SSH into server
-        # - Pull latest images
-        # - Restart services
-    
-    - name: Verify deployment
-      run: |
-        echo "Verifying staging deployment..."
-        # curl https://staging.quran-app.example.com/health
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Staging Server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -e
+            
+            # Navigate to deployment directory
+            cd /opt/quran-app-staging || mkdir -p /opt/quran-app-staging && cd /opt/quran-app-staging
+            
+            # Pull latest code
+            if [ -d .git ]; then
+              git pull origin develop
+            else
+              git clone ${{ github.server_url }}/${{ github.repository }}.git .
+              git checkout develop
+            fi
+            
+            # Pull latest images
+            docker-compose -f docker-compose.staging.yml pull
+            
+            # Deploy with zero downtime
+            docker-compose -f docker-compose.staging.yml up -d --remove-orphans
+            
+            # Wait for services
+            sleep 30
+            
+            # Health check
+            curl -f http://localhost:8000/health || exit 1
+            curl -f http://localhost:3000 || exit 1
+            
+            # Cleanup
+            docker system prune -f
+            
+            echo "Staging deployment completed successfully"
+          EOF
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -f https://staging.quran-app.example.com/health || exit 1
+          curl -f https://staging.quran-app.example.com/api/quran/surahs | jq '. | length' | grep -q 114 || exit 1
+
+      - name: Notify on Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Staging deployment ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ==================== PRODUCTION DEPLOYMENT ====================
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
+    needs: deploy-staging
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     environment:
       name: production
       url: https://quran-app.example.com
-    needs: [deploy-staging]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Deploy to Production Server
-      run: |
-        echo "Deploying to production environment..."
-        # Add your production deployment commands here
-        # Example:
-        # - SSH into server
-        # - Pull latest images
-        # - Run database migrations
-        # - Restart services with zero downtime
-    
-    - name: Verify deployment
-      run: |
-        echo "Verifying production deployment..."
-        # curl https://quran-app.example.com/health
-    
-    - name: Create Release
-      uses: actions/create-release@v1
-      if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Production Server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -e
+            
+            # Navigate to deployment directory
+            cd /opt/quran-app || mkdir -p /opt/quran-app && cd /opt/quran-app
+            
+            # Create backup
+            BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
+            mkdir -p $BACKUP_DIR
+            cp -r data $BACKUP_DIR/ 2>/dev/null || true
+            
+            # Pull latest code
+            if [ -d .git ]; then
+              git fetch --tags
+              git checkout ${{ github.ref_name }}
+            else
+              git clone ${{ github.server_url }}/${{ github.repository }}.git .
+              git checkout ${{ github.ref_name }}
+            fi
+            
+            # Pull latest images
+            docker-compose pull
+            
+            # Deploy with zero downtime
+            docker-compose up -d --remove-orphans
+            
+            # Wait for services
+            sleep 30
+            
+            # Health check
+            curl -f http://localhost:8000/health || (echo "Health check failed" && exit 1)
+            curl -f http://localhost:3000 || (echo "Frontend health check failed" && exit 1)
+            
+            # Cleanup
+            docker system prune -f
+            
+            echo "Production deployment completed successfully"
+          EOF
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -f https://quran-app.example.com/health || exit 1
+          curl -f https://quran-app.example.com/api/quran/surahs | jq '. | length' | grep -q 114 || exit 1
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Changes in this Release
+            - See [CHANGELOG.md](CHANGELOG.md) for details
+            
+            ## Deployment
+            - Backend: https://quran-app.example.com
+            - Frontend: https://quran-app.example.com
+            - API Docs: https://quran-app.example.com/docs
+
+      - name: Notify on Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Production deployment ${{ job.status }} - Version ${{ github.ref_name }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ==================== STATIC SITE DEPLOYMENT ====================
   deploy-static:
     name: Deploy Static Site
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: quran-app/frontend/package.json
-    
-    - name: Install dependencies
-      run: |
-        cd quran-app/frontend
-        npm ci
-    
-    - name: Build static site
-      run: |
-        cd quran-app/frontend
-        npm run build
-      env:
-        NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
-    
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./quran-app/frontend/dist
-        cname: quran-app.example.com
-      if: false  # Disable until configured
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: quran-app/frontend/package.json
+
+      - name: Install dependencies
+        run: |
+          cd quran-app/frontend
+          npm ci
+
+      - name: Build static site
+        run: |
+          cd quran-app/frontend
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: false  # Disable until configured - set to true to enable
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./quran-app/frontend/dist
+          cname: quran-app.example.com
+
+  # ==================== DOCKER COMPOSE DEPLOYMENT ====================
   deploy-docker-compose:
     name: Deploy with Docker Compose
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Copy deployment files
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "docker-compose.yml,.env.example"
-        target: "/opt/quran-app"
-      if: false  # Disable until configured
-    
-    - name: Deploy to server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          cd /opt/quran-app
-          docker-compose pull
-          docker-compose up -d
-          docker system prune -f
-      if: false  # Disable until configured
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy deployment files to server
+        uses: appleboy/scp-action@v0.1.7
+        if: false  # Disable until secrets configured
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml,docker-compose.prod.yml,.env.example"
+          target: "/opt/quran-app"
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        if: false  # Disable until secrets configured
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/quran-app
+            
+            # Load environment variables
+            if [ -f .env ]; then
+              source .env
+            fi
+            
+            # Pull latest images
+            docker-compose pull
+            
+            # Deploy
+            docker-compose up -d
+            
+            # Health check
+            sleep 30
+            curl -f http://localhost:8000/health || exit 1
+            
+            # Cleanup
+            docker system prune -f
+
+  # ==================== CLOUD PROVIDER DEPLOYMENTS ====================
+  deploy-aws:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    if: false  # Disable until AWS credentials configured
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push images to ECR
+        run: |
+          # Backend
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/quran-app-backend:${{ github.sha }} ./quran-app/backend
+          docker push ${{ steps.login-ecr.outputs.registry }}/quran-app-backend:${{ github.sha }}
+          
+          # Frontend
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/quran-app-frontend:${{ github.sha }} ./quran-app/frontend
+          docker push ${{ steps.login-ecr.outputs.registry }}/quran-app-frontend:${{ github.sha }}
+
+      - name: Deploy to ECS
+        run: |
+          # Update ECS service
+          aws ecs update-service --cluster quran-app --service quran-app --force-new-deployment
+
+  deploy-railway:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    if: false  # Disable until Railway token configured
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Deploy to Railway
+        run: |
+          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+          railway up
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  # ==================== ROLLBACK ====================
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Rollback to previous version
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd /opt/quran-app
+            
+            # Get previous tag
+            PREVIOUS_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+            
+            if [ -n "$PREVIOUS_TAG" ]; then
+              echo "Rolling back to $PREVIOUS_TAG"
+              git checkout $PREVIOUS_TAG
+              docker-compose pull
+              docker-compose up -d
+              
+              # Health check
+              sleep 30
+              curl -f http://localhost:8000/health || exit 1
+              
+              echo "Rollback completed successfully"
+            else
+              echo "No previous version found"
+              exit 1
+            fi
+          EOF
+
+      - name: Notify on Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Production rollback ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
