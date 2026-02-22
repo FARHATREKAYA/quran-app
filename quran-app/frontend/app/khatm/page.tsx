@@ -132,11 +132,11 @@ export default function KhatmPage() {
     <div className={`min-h-screen flex flex-col ${
       theme === 'dark' ? 'bg-gray-900' : theme === 'sepia' ? 'bg-amber-50' : 'bg-gray-50'
     }`}>
-      <div className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full">
+        {/* Header - Mobile optimized */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className={`text-3xl font-bold mb-2 ${
+            <h1 className={`text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               {t.khatm || 'Khatm'}
@@ -149,83 +149,89 @@ export default function KhatmPage() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
           >
-            <Plus className="h-5 w-5" />
-            <span className="hidden sm:inline">{t.newKhatm || 'New Khatm'}</span>
+            <Plus className="h-4 w-4" />
+            <span>{t.newKhatm || 'New Khatm'}</span>
           </button>
         </div>
 
-        {/* Today's Sessions */}
+        {/* Today's Sessions - Mobile optimized cards */}
         {activeKhatms.some(k => k.todaySession) && (
-          <div className="mb-8">
-            <h2 className={`text-xl font-semibold mb-4 ${
+          <div className="mb-6 sm:mb-8">
+            <h2 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               {t.todaySession || "Today's Session"}
             </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {activeKhatms
                 .filter(k => k.todaySession)
                 .map(khatm => (
                   <div
                     key={khatm.id}
-                    className={`rounded-xl border p-6 transition-all hover:shadow-lg ${
+                    className={`rounded-xl border p-4 sm:p-6 transition-all hover:shadow-lg ${
                       theme === 'dark'
                         ? 'bg-gray-800 border-gray-700'
                         : 'bg-white border-gray-200'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className={`font-semibold mb-1 ${
+                    {/* Session header */}
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
+                      <div className="flex-1 min-w-0 mr-2">
+                        <h3 className={`font-semibold text-base sm:text-lg mb-1 truncate ${
                           theme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
                           {khatm.title}
                         </h3>
-                        <p className={`text-sm ${
+                        <p className={`text-xs sm:text-sm ${
                           theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                         }`}>
                           {t.session || 'Session'} #{khatm.todaySession!.session_number}
                         </p>
                       </div>
-                      {getStatusIcon(khatm.todaySession!.status)}
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-sm mb-4">
-                      <div className={`flex items-center gap-1 ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        <Clock className="h-4 w-4" />
-                        {khatm.todaySession!.scheduled_time}
-                      </div>
-                      <div className={`flex items-center gap-1 ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        <BookOpen className="h-4 w-4" />
-                        {khatm.todaySession!.verse_count} {t.verses}
+                      <div className="flex-shrink-0">
+                        {getStatusIcon(khatm.todaySession!.status)}
                       </div>
                     </div>
 
-                    <div className="mb-4">
-                      <p className={`text-sm mb-1 ${
+                    {/* Session details - Mobile friendly */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm mb-3 sm:mb-4">
+                      <div className={`flex items-center gap-1 ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
-                        {khatm.todaySession!.start_surah} {khatm.todaySession!.start_verse_in_surah} 
-                        {' → '}
-                        {khatm.todaySession!.end_surah} {khatm.todaySession!.end_verse_in_surah}
+                        <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span>{khatm.todaySession!.scheduled_time}</span>
+                      </div>
+                      <div className={`flex items-center gap-1 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span>{khatm.todaySession!.verse_count} {t.verses}</span>
+                      </div>
+                    </div>
+
+                    {/* Verse range */}
+                    <div className="mb-3 sm:mb-4">
+                      <p className={`text-xs sm:text-sm ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        <span className="font-medium">{khatm.todaySession!.start_surah}</span> {khatm.todaySession!.start_verse_in_surah}
+                        <span className="mx-1">→</span>
+                        <span className="font-medium">{khatm.todaySession!.end_surah}</span> {khatm.todaySession!.end_verse_in_surah}
                       </p>
                     </div>
 
+                    {/* Action button */}
                     <Link
                       href={`/khatm/${khatm.id}/session/${khatm.todaySession!.id}`}
-                      className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
                     >
                       <Play className="h-4 w-4" />
-                      {khatm.reading_mode === 'read_listen' 
+                      <span>{khatm.reading_mode === 'read_listen'
                         ? (t.readAndListen || 'Read & Listen')
                         : (t.startReading || 'Start Reading')
-                      }
+                      }</span>
                     </Link>
                   </div>
                 ))}
@@ -233,32 +239,33 @@ export default function KhatmPage() {
           </div>
         )}
 
-        {/* Active Khatms */}
+        {/* Active Khatms - Mobile optimized */}
         {activeKhatms.length > 0 && (
-          <div className="mb-8">
-            <h2 className={`text-xl font-semibold mb-4 ${
+          <div className="mb-6 sm:mb-8">
+            <h2 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               {t.activeKhatms || 'Active Khatms'}
             </h2>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
               {activeKhatms.map(khatm => (
                 <div
                   key={khatm.id}
-                  className={`rounded-xl border p-6 transition-all hover:shadow-lg ${
+                  className={`rounded-xl border p-4 sm:p-6 transition-all hover:shadow-lg ${
                     theme === 'dark'
                       ? 'bg-gray-800 border-gray-700'
                       : 'bg-white border-gray-200'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className={`font-semibold text-lg mb-1 ${
+                  {/* Header with title and delete button */}
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className="flex-1 min-w-0 mr-2">
+                      <h3 className={`font-semibold text-base sm:text-lg mb-1 truncate ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}>
                         {khatm.title}
                       </h3>
-                      <p className={`text-sm ${
+                      <p className={`text-xs sm:text-sm ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
                         {khatm.completed_sessions} / {khatm.total_sessions} {t.sessionsCompleted}
@@ -266,7 +273,7 @@ export default function KhatmPage() {
                     </div>
                     <button
                       onClick={() => handleDeleteKhatm(khatm.id)}
-                      className={`p-2 rounded-full transition-colors ${
+                      className={`p-2 rounded-full transition-colors flex-shrink-0 ${
                         theme === 'dark'
                           ? 'text-gray-400 hover:text-red-400 hover:bg-gray-700'
                           : 'text-gray-600 hover:text-red-600 hover:bg-gray-100'
@@ -277,8 +284,8 @@ export default function KhatmPage() {
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="mb-4">
-                    <div className={`flex justify-between text-sm mb-2 ${
+                  <div className="mb-3 sm:mb-4">
+                    <div className={`flex justify-between text-xs sm:text-sm mb-2 ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                     }`}>
                       <span>{t.progress}</span>
@@ -294,45 +301,45 @@ export default function KhatmPage() {
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className={`text-center p-2 rounded-lg ${
+                  {/* Stats - Mobile friendly */}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4">
+                    <div className={`text-center p-2 sm:p-3 rounded-lg ${
                       theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
                     }`}>
-                      <p className={`text-lg font-semibold ${
+                      <p className={`text-base sm:text-lg font-semibold ${
                         theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
                       }`}>
                         {khatm.completed_sessions}
                       </p>
-                      <p className={`text-xs ${
+                      <p className={`text-[10px] sm:text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
                         {t.completed}
                       </p>
                     </div>
-                    <div className={`text-center p-2 rounded-lg ${
+                    <div className={`text-center p-2 sm:p-3 rounded-lg ${
                       theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
                     }`}>
-                      <p className={`text-lg font-semibold ${
+                      <p className={`text-base sm:text-lg font-semibold ${
                         theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                       }`}>
                         {khatm.total_sessions - khatm.completed_sessions}
                       </p>
-                      <p className={`text-xs ${
+                      <p className={`text-[10px] sm:text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
                         {t.remaining}
                       </p>
                     </div>
-                    <div className={`text-center p-2 rounded-lg ${
+                    <div className={`text-center p-2 sm:p-3 rounded-lg ${
                       theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
                     }`}>
-                      <p className={`text-lg font-semibold ${
+                      <p className={`text-base sm:text-lg font-semibold ${
                         theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                       }`}>
                         {Math.round(khatm.verses_percentage)}%
                       </p>
-                      <p className={`text-xs ${
+                      <p className={`text-[10px] sm:text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
                         {t.verses}
@@ -342,13 +349,13 @@ export default function KhatmPage() {
 
                   <Link
                     href={`/khatm/${khatm.id}`}
-                    className={`flex items-center justify-center gap-2 w-full py-2 border rounded-lg transition-colors ${
+                    className={`flex items-center justify-center gap-2 w-full py-2.5 sm:py-2 border rounded-lg transition-colors text-sm font-medium ${
                       theme === 'dark'
                         ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    {t.viewCalendar || 'View Calendar'}
+                    <span>{t.viewCalendar || 'View Calendar'}</span>
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -357,62 +364,62 @@ export default function KhatmPage() {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - Mobile optimized */}
         {!isLoading && activeKhatms.length === 0 && (
-          <div className={`text-center py-16 rounded-xl ${
+          <div className={`text-center py-12 sm:py-16 rounded-xl px-4 ${
             theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
           }`}>
-            <Target className="h-16 w-16 mx-auto mb-4 opacity-50" />
-            <h3 className={`text-xl font-semibold mb-2 ${
+            <Target className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 opacity-50" />
+            <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               {t.noKhatm || 'No Khatm Yet'}
             </h3>
-            <p className="mb-6 max-w-md mx-auto">
+            <p className="mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
               {t.khatmDescription || 'Start a Khatm to read the Quran on a schedule that works for you. Set your pace and track your progress.'}
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors mx-auto"
+              className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors mx-auto text-sm font-medium"
             >
-              <Plus className="h-5 w-5" />
-              {t.startKhatm || 'Start Your Khatm'}
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span>{t.startKhatm || 'Start Your Khatm'}</span>
             </button>
           </div>
         )}
 
-        {/* Completed Khatms */}
+        {/* Completed Khatms - Mobile optimized */}
         {completedKhatms.length > 0 && (
-          <div className="mt-12">
-            <h2 className={`text-xl font-semibold mb-4 ${
+          <div className="mt-8 sm:mt-12">
+            <h2 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               {t.completedKhatms || 'Completed Khatms'}
             </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {completedKhatms.map(khatm => (
                 <div
                   key={khatm.id}
-                  className={`rounded-xl border p-6 opacity-75 ${
+                  className={`rounded-xl border p-4 sm:p-6 opacity-75 ${
                     theme === 'dark'
                       ? 'bg-gray-800 border-gray-700'
                       : 'bg-gray-50 border-gray-200'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                    <h3 className={`font-semibold ${
+                  <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500 flex-shrink-0" />
+                    <h3 className={`font-semibold text-sm sm:text-base truncate ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
                       {khatm.title}
                     </h3>
                   </div>
-                  <p className={`text-sm mb-2 ${
+                  <p className={`text-xs sm:text-sm mb-2 ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {khatm.total_sessions} {t.sessions} • {khatm.total_verses} {t.verses}
                   </p>
-                  <p className={`text-sm ${
+                  <p className={`text-xs sm:text-sm ${
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                   }`}>
                     {new Date(khatm.created_at).toLocaleDateString()}
