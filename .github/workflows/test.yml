@@ -15,9 +15,6 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
-    
-    services:
-      # SQLite doesn't need a service, but we could add PostgreSQL here if needed
 
     steps:
       - name: Checkout code
