@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Backend API Service
   backend:
     build:
       context: ./backend
@@ -8,12 +9,15 @@ services:
     container_name: quran-backend
     ports:
       - "8000:8000"
-    environment:
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-      - DEBUG=false
     volumes:
-      - ./backend/data:/app/data
+      - ./backend/data:/app/data:ro
+      - /app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data/quran.db
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - DEBUG=false
+      - JWT_SECRET=${JWT_SECRET:-defaultsecret}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -23,6 +27,7 @@ services:
     networks:
       - quran-network
 
+  # Frontend Next.js Application
   frontend:
     build:
       context: ./frontend
@@ -32,8 +37,7 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NODE_ENV=production
     depends_on:
       - backend
     restart: unless-stopped
@@ -74,7 +78,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3001
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
@@ -85,7 +89,7 @@ services:
     networks:
       - quran-network
 
-  # Optional: Node Exporter for system metrics
+  # Node Exporter for system metrics
   node-exporter:
     image: prom/node-exporter:latest
     container_name: quran-node-exporter
@@ -104,7 +108,7 @@ services:
     networks:
       - quran-network
 
-  # Optional: cAdvisor for container metrics
+  # cAdvisor for container metrics
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: quran-cadvisor
@@ -115,13 +119,12 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
     privileged: true
     restart: unless-stopped
     networks:
       - quran-network
 
-  # Optional: Alertmanager for alerting
+  # Alertmanager for alerting
   alertmanager:
     image: prom/alertmanager:latest
     container_name: quran-alertmanager
